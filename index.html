@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Futbol Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .option-selected {
+            transform: scale(0.98);
+            filter: brightness(0.9);
+        }
+        .correct-answer {
+            background-color: #4ade80 !important;
+            border-color: #22c55e !important;
+        }
+        .wrong-answer {
+            background-color: #f87171 !important;
+            border-color: #ef4444 !important;
+        }
+        .disabled-option {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        .background-transition {
+            transition: background-image 0.5s ease-in-out;
+        }
+        .shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen background-transition" style="background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80'); background-size: cover; background-position: center;">
+    <!-- Main Game Container -->
+    <div id="game-container">
+        <div class="container mx-auto px-4 py-8 max-w-4xl">
+            <!-- Header -->
+            <header class="flex justify-between items-center mb-8 bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-lg">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-gem text-blue-500 text-2xl"></i>
+                    <span id="diamonds-count" class="font-bold text-xl">0</span>
+                </div>
+                <h1 class="text-3xl font-bold text-center text-gray-800">Futbol Quiz</h1>
+                <div class="flex space-x-2">
+                    <button id="save-btn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg transition">
+                        <i class="fas fa-save mr-1"></i>Guardar
+                    </button>
+                    <button id="shop-btn" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg transition">
+                        <i class="fas fa-store mr-1"></i>Tienda
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Game Area -->
+            <main class="bg-white/90 backdrop-blur-sm rounded-xl p-6 shadow-xl">
+                <!-- Question Container -->
+                <div id="question-container" class="mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <span id="difficulty" class="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">Difícil</span>
+                        <span id="question-number" class="text-gray-600">Pregunta 1/1000</span>
+                    </div>
+                    <h2 id="question" class="text-2xl font-bold mb-6 text-gray-800">Cargando pregunta...</h2>
+                    
+                    <!-- Options -->
+                    <div id="options" class="grid grid-cols-1 gap-3">
+                        <div class="option h-16 bg-gray-100 rounded-lg flex items-center px-4 cursor-pointer transition hover:bg-gray-200 border-2 border-transparent">
+                            <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mr-3 font-bold">A</div>
+                            <span class="option-text">Cargando opción...</span>
+                        </div>
+                        <!-- More options will be added by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-between items-center mt-8">
+                    <button id="hint-btn" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg transition flex items-center">
+                        <i class="fas fa-lightbulb mr-2"></i>Pista (12💎)
+                    </button>
+                    <button id="code-btn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-ticket-alt mr-2"></i>Canjear código
+                    </button>
+                </div>
+
+                <!-- Hint Modal -->
+                <div id="hint-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">Usar pista</h3>
+                            <button id="close-hint-modal" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <p id="hint-text" class="mb-6">Esta pista te dará información relacionada con la pregunta para ayudarte a encontrar la respuesta correcta.</p>
+                        <div class="flex justify-end space-x-3">
+                            <button id="cancel-hint" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg">
+                                Cancelar
+                            </button>
+                            <button id="confirm-hint" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg">
+                                Usar pista (12💎)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Code Modal -->
+                <div id="code-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold">Canjear código</h3>
+                            <button id="close-code-modal" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <input type="text" id="code-input" placeholder="Ingresa tu código aquí" class="w-full px-4 py-2 border rounded-lg mb-4">
+                        <p id="code-feedback" class="text-sm mb-4 hidden"></p>
+                        <div class="flex justify-end">
+                            <button id="confirm-code" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                                Canjear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shop Modal -->
+                <div id="shop-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-2xl font-bold">Tienda de Fondos</h3>
+                            <button id="close-shop-modal" class="text-gray-500 hover:text-gray-700">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- Madrid Background -->
+                            <div class="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
+                                <div class="h-40 bg-gradient-to-r from-white to-blue-900 rounded-lg mb-3 flex items-center justify-center">
+                                    <div class="text-4xl font-bold text-white bg-blue-900 p-4 rounded-full">RM</div>
+                                </div>
+                                <h4 class="font-bold text-lg mb-2">Fondo Real Madrid</h4>
+                                <p class="text-gray-600 mb-3">Exclusivo fondo del equipo merengue para tu juego.</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-blue-600">70💎</span>
+                                    <button class="buy-btn bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg" data-item="madrid" data-cost="70">
+                                        Comprar
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Barcelona Background -->
+                            <div class="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
+                                <div class="h-40 bg-gradient-to-r from-blue-600 to-red-600 rounded-lg mb-3 flex items-center justify-center">
+                                    <div class="text-4xl font-bold text-white bg-red-600 p-4 rounded-full">FCB</div>
+                                </div>
+                                <h4 class="font-bold text-lg mb-2">Fondo Barcelona</h4>
+                                <p class="text-gray-600 mb-3">Exclusivo fondo del equipo culé para tu juego.</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-blue-600">70💎</span>
+                                    <button class="buy-btn bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg" data-item="barcelona" data-cost="70">
+                                        Comprar
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- FC25 Background -->
+                            <div class="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
+                                <div class="h-40 bg-gradient-to-b from-black to-blue-900 rounded-lg mb-3 flex items-center justify-center">
+                                    <div class="text-4xl font-bold text-white">FC25</div>
+                                </div>
+                                <h4 class="font-bold text-lg mb-2">Fondo FC25</h4>
+                                <p class="text-gray-600 mb-3">Estilo del nuevo juego de fútbol de EA Sports.</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-blue-600">Código: fc25</span>
+                                    <button class="bg-gray-300 text-gray-600 px-3 py-1 rounded-lg cursor-not-allowed" disabled>
+                                        Por código
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Venezuela Background -->
+                            <div class="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
+                                <div class="h-40 bg-gradient-to-b from-yellow-400 via-blue-500 to-red-500 rounded-lg mb-3 flex items-center justify-center">
+                                    <div class="text-4xl font-bold text-white">VEN</div>
+                                </div>
+                                <h4 class="font-bold text-lg mb-2">Fondo Venezuela</h4>
+                                <p class="text-gray-600 mb-3">Apoya a la vinotinto con este fondo especial.</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-blue-600">Código: caracas</span>
+                                    <button class="bg-gray-300 text-gray-600 px-3 py-1 rounded-lg cursor-not-allowed" disabled>
+                                        Por código
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Insufficient Funds Modal -->
+                <div id="insufficient-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+                        <div class="flex flex-col items-center mb-4">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 text-5xl mb-3"></i>
+                            <h3 class="text-xl font-bold text-center">Fondos insuficientes</h3>
+                        </div>
+                        <p class="text-center mb-6">No tienes suficientes diamantes para realizar esta acción. ¡Responde más preguntas para ganar diamantes!</p>
+                        <div class="flex justify-center">
+                            <button id="close-insufficient-modal" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Purchase Confirmation Modal -->
+                <div id="purchase-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+                        <div class="flex flex-col items-center mb-4">
+                            <i class="fas fa-check-circle text-green-500 text-5xl mb-3"></i>
+                            <h3 class="text-xl font-bold text-center">¡Compra exitosa!</h3>
+                        </div>
+                        <p id="purchase-message" class="text-center mb-6">Tu compra se ha realizado con éxito.</p>
+                        <div class="flex justify-center">
+                            <button id="close-purchase-modal" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                                Continuar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Save Confirmation Modal -->
+                <div id="save-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+                    <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+                        <div class="flex flex-col items-center mb-4">
+                            <i class="fas fa-check-circle text-green-500 text-5xl mb-3"></i>
+                            <h3 class="text-xl font-bold text-center">¡Progreso guardado!</h3>
+                        </div>
+                        <p class="text-center mb-6">Tu progreso en el juego ha sido guardado correctamente.</p>
+                        <div class="flex justify-center">
+                            <button id="close-save-modal" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg">
+                                Continuar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        const gameState = {
+            diamonds: 0,
+            currentQuestionIndex: 0,
+            questionsAnswered: 0,
+            selectedOption: null,
+            correctAnswers: 0,
+            background: 'default',
+            usedHints: 0,
+            unlockedBackgrounds: ['default'],
+            redeemedCodes: [],
+            lastSave: null
+        };
+
+        // Valid codes (can only be redeemed once)
+        const validCodes = {
+            'fifa': { diamonds: 9, message: '¡Código FIFA válido! +9 diamantes' },
+            'fc25': { background: 'fc25', message: '¡Fondo FC25 desbloqueado!' },
+            'caracas': { background: 'venezuela', message: '¡Fondo Venezuela desbloqueado!' },
+            'futbolquiz': { diamonds: 12, message: '¡Código especial! +12 diamantes' }
+        };
+
+        // Background images
+        const backgrounds = {
+            'default': 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'madrid': 'https://images.unsplash.com/photo-1543351611-58f69d7c1781?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'barcelona': 'https://images.unsplash.com/photo-1526655806316-3ffcc6e0e887?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'fc25': 'https://images.unsplash.com/photo-1639754390580-2e7437267698?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'venezuela': 'https://images.unsplash.com/photo-1585011658239-f9ec3a8e8a1a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80'
+        };
+
+        // Questions database (1000 difficult questions)
+        const questions = [
+            // Question 1
+            {
+                question: "¿Qué equipo ganó la Champions League en la temporada 2003-04?",
+                options: [
+                    "Porto",
+                    "Real Madrid",
+                    "Barcelona",
+                    "AC Milan",
+                    "Manchester United",
+                    "Bayern Munich"
+                ],
+                answer: 0,
+                difficulty: "Difícil",
+                hint: "Este equipo portugués ganó la final contra el Mónaco"
+            },
+            // Question 2
+            {
+                question: "¿Quién fue el máximo goleador de la Premier League en la temporada 2004-05?",
+                options: [
+                    "Thierry Henry",
+                    "Alan Shearer",
+                    "Wayne Rooney",
+                    "Didier Drogba",
+                    "Frank Lampard",
+                    "Ruud van Nistelrooy"
+                ],
+                answer: 0,
+                difficulty: "Difícil",
+                hint: "Este jugador francés marcó 25 goles esa temporada"
+            },
+            // Question 3
+            {
+                question: "¿Qué selección ganó la Copa América en 2004?",
+                options: [
+                    "Brasil",
+                    "Argentina",
+                    "Colombia",
+                    "Uruguay",
+                    "Paraguay",
+                    "México"
+                ],
+                answer: 0,
+                difficulty: "Difícil",
+                hint: "Ganaron la final contra Argentina en los penaltis"
+            },
+            // Question 4
+            {
+                question: "¿Qué jugador ganó el Balón de Oro en 2004?",
+                options: [
+                    "Andriy Shevchenko",
+                    "Ronaldinho",
+                    "Thierry Henry",
+                    "Pavel Nedvěd",
+                    "Zinedine Zidane",
+                    "David Beckham"
+                ],
+                answer: 0,
+                difficulty: "Difícil",
+                hint: "Este delantero ucraniano jugaba para el AC Milan"
+            },
+            // Question 5
+            {
+                question: "¿Qué equipo ganó la Bundesliga en la temporada 2004-05?",
+                options: [
+                    "Bayern Munich",
+                    "Werder Bremen",
+                    "Bayer Leverkusen",
+                    "VfB Stuttgart",
+                    "Borussia Dortmund",
+                    "Hamburgo"
+                ],
+                answer: 0,
+                difficulty: "Difícil",
+                hint: "Este equipo bávaro ganó el título por 14 puntos"
+            },
+            // Question 6
+            {
+                question: "¿Qué jugador anotó el gol de la victoria en la final de la Champions League 2005?",
+                options: [
+                    "Steven Gerrard",
+                    "Xabi Alonso",
+                    "Vladimír Šmicer",
+                    "Milan Baroš",
+                    "Djibril Cissé",
+                    "Harry Kewell"
+                ],
+                answer: 2,
+                difficulty: "Difícil",
+                hint: "Fue un jugador checo que anotó el segundo gol"
+            },
+            // Question 7
+            {
+                question: "¿Qué equipo ganó la Copa Libertadores en 2004?",
+                options: [
+                    "Once Caldas",
+                    "Boca Juniors",
+                    "Santos",
+                    "São Paulo",
+                    "River Plate",
+                    "América de Cali"
+                ],
+                answer: 0,
+                difficulty: "Difícil",
+                hint: "Fue un equipo colombiano que ganó en penaltis"
+            },
+            // Question 8
+            {
+                question: "¿Qué jugador ganó el premio al mejor jugador del Mundial 2006?",
+                options: [
+                    "Zinedine Zidane",
+                    "Fabio Cannavaro",
+                    "Andrea Pirlo",
+                    "Miroslav Klose",
+                    "Thierry Henry",
+                    "Ronaldo"
+                ],
+                answer: 1,
+                difficulty: "Difícil",
+                hint: "Fue un defensa italiano que levantó el trofeo"
+            },
+            // Question 9
+            {
+                question: "¿Qué equipo ganó la Premier League en la temporada 2005-06?",
+                options: [
+                    "Chelsea",
+                    "Manchester United",
+                    "Arsenal",
+                    "Liverpool",
+                    "Tottenham",
+                    "Newcastle"
+                ],
+                answer: 0,
+                difficulty: "Difícil",
+                hint: "Fue el segundo título consecutivo para este equipo"
+            },
+            // Question 10
+            {
+                question: "¿Qué selección ganó la Eurocopa en 2004?",
+                options: [
+                    "Grecia",
+                    "Portugal",
+                    "República Checa",
+                    "Holanda",
+                    "Francia",
+                    "España"
+                ],
+                answer: 0,
+                difficulty: "Difícil",
+                hint: "Fue una sorpresa histórica en el fútbol europeo"
+            }
+        ];
+
+        // DOM Elements
+        const elements = {
+            gameContainer: document.getElementById('game-container'),
+            question: document.getElementById('question'),
+            options: document.getElementById('options'),
+            questionNumber: document.getElementById('question-number'),
+            difficulty: document.getElementById('difficulty'),
+            diamondsCount: document.getElementById('diamonds-count'),
+            hintBtn: document.getElementById('hint-btn'),
+            shopBtn: document.getElementById('shop-btn'),
+            saveBtn: document.getElementById('save-btn'),
+            codeBtn: document.getElementById('code-btn'),
+            hintModal: document.getElementById('hint-modal'),
+            closeHintModal: document.getElementById('close-hint-modal'),
+            confirmHint: document.getElementById('confirm-hint'),
+            cancelHint: document.getElementById('cancel-hint'),
+            hintText: document.getElementById('hint-text'),
+            codeModal: document.getElementById('code-modal'),
+            closeCodeModal: document.getElementById('close-code-modal'),
+            confirmCode: document.getElementById('confirm-code'),
+            codeInput: document.getElementById('code-input'),
+            codeFeedback: document.getElementById('code-feedback'),
+            shopModal: document.getElementById('shop-modal'),
+            closeShopModal: document.getElementById('close-shop-modal'),
+            insufficientModal: document.getElementById('insufficient-modal'),
+            closeInsufficientModal: document.getElementById('close-insufficient-modal'),
+            purchaseModal: document.getElementById('purchase-modal'),
+            closePurchaseModal: document.getElementById('close-purchase-modal'),
+            purchaseMessage: document.getElementById('purchase-message'),
+            saveModal: document.getElementById('save-modal'),
+            closeSaveModal: document.getElementById('close-save-modal'),
+            body: document.body
+        };
+
+        // Initialize the game
+        function initGame() {
+            updateDiamondsDisplay();
+            loadQuestion();
+            
+            // Set background if one was selected
+            if (gameState.background && gameState.background !== 'default') {
+                elements.body.style.backgroundImage = `url(${backgrounds[gameState.background]})`;
+            }
+        }
+
+        // Load a question
+        function loadQuestion() {
+            const currentQuestion = questions[gameState.currentQuestionIndex];
+            
+            elements.question.textContent = currentQuestion.question;
+            elements.difficulty.textContent = currentQuestion.difficulty;
+            elements.questionNumber.textContent = `Pregunta ${gameState.currentQuestionIndex + 1}/${questions.length}`;
+            
+            // Update difficulty badge color
+            elements.difficulty.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800';
+            
+            // Clear options
+            elements.options.innerHTML = '';
+            
+            // Add options
+            const optionLetters = ['A', 'B', 'C', 'D', 'E', 'F'];
+            currentQuestion.options.forEach((option, index) => {
+                const optionElement = document.createElement('div');
+                optionElement.className = 'option h-16 bg-gray-100 rounded-lg flex items-center px-4 cursor-pointer transition hover:bg-gray-200 border-2 border-transparent';
+                optionElement.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center mr-3 font-bold">${optionLetters[index]}</div>
+                    <span class="option-text">${option}</span>
+                `;
+                
+                optionElement.addEventListener('click', () => selectOption(index));
+                elements.options.appendChild(optionElement);
+            });
+            
+            // Reset UI state
+            gameState.selectedOption = null;
+        }
+
+        // Select an option
+        function selectOption(optionIndex) {
+            if (gameState.selectedOption !== null) return;
+            
+            gameState.selectedOption = optionIndex;
+            const currentQuestion = questions[gameState.currentQuestionIndex];
+            const optionElements = document.querySelectorAll('.option');
+            
+            // Disable all options
+            optionElements.forEach(opt => {
+                opt.classList.add('disabled-option');
+                opt.style.pointerEvents = 'none';
+            });
+            
+            // Mark selected option
+            optionElements[optionIndex].classList.add('option-selected');
+            
+            // Check if answer is correct
+            if (optionIndex === currentQuestion.answer) {
+                optionElements[optionIndex].classList.add('correct-answer');
+                gameState.correctAnswers++;
+                
+                // Award diamonds
+                gameState.diamonds += 3;
+                updateDiamondsDisplay();
+            } else {
+                optionElements[optionIndex].classList.add('wrong-answer');
+                optionElements[currentQuestion.answer].classList.add('correct-answer');
+            }
+            
+            // Increment questions answered
+            gameState.questionsAnswered++;
+            
+            // Save game state
+            saveGameState();
+            
+            // Automatically go to next question after delay
+            setTimeout(() => {
+                nextQuestion();
+            }, 2000);
+        }
+
+        // Go to next question
+        function nextQuestion() {
+            gameState.currentQuestionIndex++;
+            
+            if (gameState.currentQuestionIndex < questions.length) {
+                loadQuestion();
+            } else {
+                // Game completed
+                alert(`¡Felicidades! Has completado todas las preguntas. Respuestas correctas: ${gameState.correctAnswers}/${questions.length}. Diamantes obtenidos: ${gameState.diamonds}`);
+                gameState.currentQuestionIndex = 0;
+                loadQuestion();
+            }
+        }
+
+        // Use hint
+        function useHint() {
+            if (gameState.diamonds < 12) {
+                showInsufficientFundsModal();
+                return;
+            }
+            
+            const currentQuestion = questions[gameState.currentQuestionIndex];
+            elements.hintText.textContent = currentQuestion.hint;
+            elements.hintModal.classList.remove('hidden');
+        }
+
+        // Confirm hint usage
+        function confirmHint() {
+            // Deduct diamonds
+            gameState.diamonds -= 12;
+            updateDiamondsDisplay();
+            gameState.usedHints++;
+            
+            // Close modal after delay
+            setTimeout(() => {
+                elements.hintModal.classList.add('hidden');
+            }, 1500);
+            
+            // Save game state
+            saveGameState();
+        }
+
+        // Show shop modal
+        function showShopModal() {
+            elements.shopModal.classList.remove('hidden');
+        }
+
+        // Buy item from shop
+        function buyItem(item, cost) {
+            if (gameState.diamonds < cost) {
+                showInsufficientFundsModal();
+                return;
+            }
+            
+            gameState.diamonds -= cost;
+            gameState.background = item;
+            gameState.unlockedBackgrounds.push(item);
+            
+            // Update background
+            elements.body.style.backgroundImage = `url(${backgrounds[item]})`;
+            
+            // Show purchase confirmation
+            elements.purchaseMessage.textContent = `¡Has comprado el fondo ${item.toUpperCase()}!`;
+            elements.purchaseModal.classList.remove('hidden');
+            
+            // Update UI
+            updateDiamondsDisplay();
+            saveGameState();
+        }
+
+        // Show code modal
+        function showCodeModal() {
+            elements.codeModal.classList.remove('hidden');
+            elements.codeInput.value = '';
+            elements.codeFeedback.classList.add('hidden');
+        }
+
+        // Redeem code
+        function redeemCode() {
+            const code = elements.codeInput.value.trim().toLowerCase();
+            
+            if (!code) {
+                showCodeFeedback("Por favor ingresa un código", false);
+                return;
+            }
+            
+            // Check if code was already redeemed
+            if (gameState.redeemedCodes.includes(code)) {
+                showCodeFeedback("Este código ya fue canjeado", false);
+                return;
+            }
+            
+            if (validCodes[code]) {
+                const codeData = validCodes[code];
+                
+                if (codeData.diamonds) {
+                    gameState.diamonds += codeData.diamonds;
+                    updateDiamondsDisplay();
+                }
+                
+                if (codeData.background) {
+                    gameState.background = codeData.background;
+                    gameState.unlockedBackgrounds.push(codeData.background);
+                    elements.body.style.backgroundImage = `url(${backgrounds[codeData.background]})`;
+                }
+                
+                // Mark code as redeemed
+                gameState.redeemedCodes.push(code);
+                showCodeFeedback(codeData.message, true);
+                
+                // Save game state
+                saveGameState();
+            } else {
+                showCodeFeedback("Código incorrecto", false);
+            }
+        }
+
+        // Show code feedback
+        function showCodeFeedback(message, isSuccess) {
+            elements.codeFeedback.textContent = message;
+            elements.codeFeedback.classList.remove('hidden');
+            
+            if (isSuccess) {
+                elements.codeFeedback.classList.add('text-green-500');
+                elements.codeFeedback.classList.remove('text-red-500');
+            } else {
+                elements.codeFeedback.classList.add('text-red-500');
+                elements.codeFeedback.classList.remove('text-green-500');
+                elements.codeFeedback.classList.add('shake');
+                setTimeout(() => {
+                    elements.codeFeedback.classList.remove('shake');
+                }, 500);
+            }
+        }
+
+        // Show insufficient funds modal
+        function showInsufficientFundsModal() {
+            elements.insufficientModal.classList.remove('hidden');
+        }
+
+        // Save game progress
+        function saveGameProgress() {
+            // In a real app, this would send data to your backend
+            // For demo, we'll just use localStorage
+            saveGameState();
+            
+            // Show save confirmation
+            elements.saveModal.classList.remove('hidden');
+            
+            // Update last save time
+            gameState.lastSave = new Date().toISOString();
+        }
+
+        // Update diamonds display
+        function updateDiamondsDisplay() {
+            elements.diamondsCount.textContent = gameState.diamonds;
+            
+            // Pulse animation when diamonds change
+            elements.diamondsCount.classList.add('pulse');
+            setTimeout(() => {
+                elements.diamondsCount.classList.remove('pulse');
+            }, 1000);
+        }
+
+        // Save game state to localStorage
+        function saveGameState() {
+            localStorage.setItem('footballQuizState', JSON.stringify(gameState));
+        }
+
+        // Load game state from localStorage
+        function loadGameState() {
+            const savedState = localStorage.getItem('footballQuizState');
+            if (savedState) {
+                Object.assign(gameState, JSON.parse(savedState));
+            }
+        }
+
+        // Event Listeners
+        elements.hintBtn.addEventListener('click', useHint);
+        elements.shopBtn.addEventListener('click', showShopModal);
+        elements.saveBtn.addEventListener('click', saveGameProgress);
+        elements.codeBtn.addEventListener('click', showCodeModal);
+        elements.closeHintModal.addEventListener('click', () => elements.hintModal.classList.add('hidden'));
+        elements.confirmHint.addEventListener('click', confirmHint);
+        elements.cancelHint.addEventListener('click', () => elements.hintModal.classList.add('hidden'));
+        elements.closeCodeModal.addEventListener('click', () => elements.codeModal.classList.add('hidden'));
+        elements.confirmCode.addEventListener('click', redeemCode);
+        elements.closeShopModal.addEventListener('click', () => elements.shopModal.classList.add('hidden'));
+        elements.closeInsufficientModal.addEventListener('click', () => elements.insufficientModal.classList.add('hidden'));
+        elements.closePurchaseModal.addEventListener('click', () => elements.purchaseModal.classList.add('hidden'));
+        elements.closeSaveModal.addEventListener('click', () => elements.saveModal.classList.add('hidden'));
+        
+        // Shop item buttons
+        document.querySelectorAll('.buy-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = btn.dataset.item;
+                const cost = parseInt(btn.dataset.cost);
+                buyItem(item, cost);
+            });
+        });
+        
+        // Initialize the game when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGameState();
+            initGame();
+        });
+    </script>
+</body>
+</html>
